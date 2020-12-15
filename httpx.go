@@ -77,9 +77,10 @@ func do(ctx context.Context, method, url string, req, resp interface{}, opts ...
 			return errors.WithStack(err)
 		}
 	}
-
-	if err := options.codec.Decode(respData, resp); err != nil {
-		return errors.WithStack(err)
+	if resp != nil {
+		if err := options.codec.Decode(respData, resp); err != nil {
+			return errors.WithStack(err)
+		}
 	}
 	return nil
 }
