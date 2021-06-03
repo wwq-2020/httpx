@@ -116,3 +116,50 @@ func Transport() http.RoundTripper {
 		ExpectContinueTimeout: 1 * time.Second,
 	}
 }
+
+type retriableTransport struct {
+	maxRetry int
+	rt       http.RoundTripper
+}
+
+func (rt *retriableTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	var saved []byte
+	var err error
+	if rt.maxRetry > 0 && req.Body != nil {
+		saved, err = ioutil.ReadAll(req.Body)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+	}
+	var resp *http.Response
+	for i := 0; i < rt.maxRetry; i++ {
+		req.Body = io.NopCloser(bytes.NewBuffer(saved))
+		resp, err = rt.rt.RoundTrip(req)
+		if err == nil {
+			if resp.StatusCode >= http.StatusInternalServerError {
+				time.Sleep(time.Millisecond * 100)
+				continue
+			}
+			return resp, nil
+		}
+	}
+	if resp != nil {
+		return resp, nil
+	}
+	return nil, errors.WithStack(err)
+}
+
+// RetriableTransport RetriableTransport
+func RetriableTransport(maxRetry int, rt http.RoundTripper) http.RoundTripper {
+	return &retriableTransport{
+		rt:       rt,
+		maxRetry: maxRetry,
+	}
+}
+
+// RetriableClient RetriableClient
+func RetriableClient() *http.Client {
+	return &http.Client{
+		Transport: RetriableTransport(3, Transport()),
+	}
+}

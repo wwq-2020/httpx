@@ -17,7 +17,7 @@ type Options struct {
 
 var defaultOptions = Options{
 	codec:           JSONCodec(),
-	client:          Client(),
+	client:          RetriableClient(),
 	reqInterceptor:  ChainedReqInterceptor(ContentTypeReqInterceptor(ContentTypeJSON), LoggingReqInterceptor),
 	respInterceptor: ChainedRespInterceptor(StatusCodeRespInterceptor(http.StatusOK), LoggingRespInterceptor),
 }
